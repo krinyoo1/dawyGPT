@@ -19,7 +19,7 @@ intents.members = True
 
 YTDL_OPTS = {"format": "bestaudio/best", "noplaylist": True, "quiet": True, "default_search": "ytsearch"}
 FFMPEG_OPTS = {"before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5", "options": "-vn",}
-YTDL_OPTS["js_runtimes"] = ["node"]
+YTDL_OPTS["js_runtimes"] = {"node": {}}
 
 cookies_from_browser = os.getenv("YTDL_COOKIES_FROM_BROWSER")
 cookies_file = os.getenv("YTDL_COOKIES_FILE")
