@@ -61,6 +61,7 @@ bot = commands.Bot(
 )
 
 loop_state = False
+skip_disconnect_once_guilds = set()
 
 @bot.event
 async def on_ready():
@@ -229,6 +230,7 @@ async def editbalance(ctx: commands.Context, target: discord.Member, type: str, 
 
 @bot.command()
 async def play(ctx: commands.Context, *, query):
+    global skip_disconnect_once_guilds
     if not ctx.author.voice:
         return await ctx.reply(embed=discord.Embed(title="Uh oh..",description="You need to join a voice channel first!", color=discord.Color.blue()))
 
@@ -276,9 +278,15 @@ async def play(ctx: commands.Context, *, query):
         vc.play(fresh_source, after=after_play)
 
     if vc.is_playing():
+        if ctx.guild:
+            skip_disconnect_once_guilds.add(ctx.guild.id)
         vc.stop()
 
     def after_play(error):
+        if ctx.guild and ctx.guild.id in skip_disconnect_once_guilds:
+            skip_disconnect_once_guilds.discard(ctx.guild.id)
+            return
+
         if error:
             print(f"An error has occured. [{error}]")
             return
@@ -317,8 +325,10 @@ async def stop(ctx: commands.Context):
 async def loop(ctx: commands.Context):
     global loop_state
     vc = ctx.voice_client
+    if not vc and ctx.guild:
+        vc = discord.utils.get(bot.voice_clients, guild=ctx.guild)
 
-    if not vc:
+    if not vc or not vc.is_connected():
         await ctx.reply(embed=discord.Embed(title="Uh oh..",description="No songs playing to loop!", color=discord.Color.blue()))
         return
 
