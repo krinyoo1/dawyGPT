@@ -4,6 +4,7 @@ import yt_dlp
 import helpers
 import os
 import random
+from yt_dlp.utils import DownloadError
 from dotenv import load_dotenv
 from discord.ext import commands
 
@@ -16,6 +17,27 @@ intents.members = True
 
 YTDL_OPTS = {"format": "bestaudio/best", "noplaylist": True, "quiet": True, "default_search": "ytsearch"}
 FFMPEG_OPTS = {"before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5", "options": "-vn",}
+
+cookies_from_browser = os.getenv("YTDL_COOKIES_FROM_BROWSER")
+cookies_file = os.getenv("YTDL_COOKIES_FILE")
+if cookies_from_browser:
+    YTDL_OPTS["cookiesfrombrowser"] = (cookies_from_browser,)
+if cookies_file:
+    YTDL_OPTS["cookiefile"] = cookies_file
+
+def extract_with_fallback(search_query: str):
+    opts_primary = dict(YTDL_OPTS)
+    opts_fallback = dict(YTDL_OPTS)
+    opts_fallback["format"] = "best"
+
+    try:
+        with yt_dlp.YoutubeDL(opts_primary) as ydl:
+            return ydl.extract_info(search_query, download=False)
+    except DownloadError as e:
+        if "Requested format is not available" not in str(e):
+            raise
+        with yt_dlp.YoutubeDL(opts_fallback) as ydl:
+            return ydl.extract_info(search_query, download=False)
 
 bot = commands.Bot(
     command_prefix='+',
@@ -194,16 +216,44 @@ async def play(ctx: commands.Context, *, query):
 
     vc = ctx.voice_client or await ctx.author.voice.channel.connect()
 
-    with yt_dlp.YoutubeDL(YTDL_OPTS) as ydl:
-        info = ydl.extract_info(f"ytsearch: {query}", download=False)
+    try:
+        info = extract_with_fallback(f"ytsearch: {query}")
         title = info["entries"][0]["title"]
+    except DownloadError as e:
+        err = str(e)
+        if "could not find chrome cookies database" in err.lower():
+            await ctx.reply(
+                embed=discord.Embed(
+                    title="Cookie Source Not Found",
+                    description=(
+                        "This host has no local Chrome profile to read cookies from.\n"
+                        "On container/remote hosting, set `YTDL_COOKIES_FILE` to an uploaded cookies.txt path, "
+                        "or remove `YTDL_COOKIES_FROM_BROWSER`."
+                    ),
+                    color=discord.Color.blue()
+                )
+            )
+            return
+        if "Sign in to confirm you’re not a bot" in err or "Sign in to confirm you're not a bot" in err:
+            await ctx.reply(
+                embed=discord.Embed(
+                    title="YouTube Authentication Needed",
+                    description=(
+                        "YouTube is blocking anonymous access right now.\n"
+                        "Set `YTDL_COOKIES_FROM_BROWSER` (example: `chrome`) or "
+                        "`YTDL_COOKIES_FILE` in your `.env`, then restart the bot."
+                    ),
+                    color=discord.Color.blue()
+                )
+            )
+            return
+        raise
 
     async def play_fresh():
         if not vc or not vc.is_connected():
             return
-        with yt_dlp.YoutubeDL(YTDL_OPTS) as ydl:
-            loop_info = ydl.extract_info(f"ytsearch: {query}", download=False)
-            loop_url = loop_info["entries"][0]["url"]
+        loop_info = extract_with_fallback(f"ytsearch: {query}")
+        loop_url = loop_info["entries"][0]["url"]
         fresh_source = discord.FFmpegPCMAudio(loop_url, **FFMPEG_OPTS)
         vc.play(fresh_source, after=after_play)
 
