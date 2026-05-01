@@ -6,9 +6,18 @@ import os
 import random
 import shutil
 import base64
+import socket
 from yt_dlp.utils import DownloadError
 from dotenv import load_dotenv
 from discord.ext import commands
+
+_lock_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+try:
+    _lock_socket.bind(("localhost", 47200))
+except OSError:
+    print("[startup] Another instance is already running. Exiting.")
+    import sys
+    sys.exit(0)
 
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
@@ -319,6 +328,7 @@ async def stop(ctx: commands.Context):
         vc.stop()
 
     await vc.disconnect()
+    loop_state = False
     await ctx.reply(embed=discord.Embed(title="Stopped", description=f"Music stopped in {channel.mention}", color=discord.Color.blue()))
 
 @bot.command()
