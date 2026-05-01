@@ -1,0 +1,13 @@
+services:
+  - type: worker
+    name: dawyGPT
+    env: docker
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: YTDL_COOKIES_FILE
+        value: /app/cookies.txt
+      - key: YTDL_COOKIES_B64
+        sync: false

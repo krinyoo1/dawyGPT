@@ -4,6 +4,8 @@ import yt_dlp
 import helpers
 import os
 import random
+import shutil
+import base64
 from yt_dlp.utils import DownloadError
 from dotenv import load_dotenv
 from discord.ext import commands
@@ -17,9 +19,21 @@ intents.members = True
 
 YTDL_OPTS = {"format": "bestaudio/best", "noplaylist": True, "quiet": True, "default_search": "ytsearch"}
 FFMPEG_OPTS = {"before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5", "options": "-vn",}
+YTDL_OPTS["js_runtimes"] = ["node"]
 
 cookies_from_browser = os.getenv("YTDL_COOKIES_FROM_BROWSER")
 cookies_file = os.getenv("YTDL_COOKIES_FILE")
+cookies_b64 = os.getenv("YTDL_COOKIES_B64")
+
+if cookies_b64 and not cookies_file:
+    decoded_path = "/tmp/cookies.txt"
+    try:
+        with open(decoded_path, "wb") as f:
+            f.write(base64.b64decode(cookies_b64))
+        cookies_file = decoded_path
+    except Exception:
+        pass
+
 if cookies_from_browser:
     YTDL_OPTS["cookiesfrombrowser"] = (cookies_from_browser,)
 if cookies_file:
@@ -51,6 +65,10 @@ loop_state = False
 @bot.event
 async def on_ready():
     print(f"[{bot.user.name}] Bot has successfully started!")
+    print(f"[startup] node in PATH: {'yes' if shutil.which('node') else 'no'}")
+    print(f"[startup] cookies file: {cookies_file if cookies_file else 'not set'}")
+    if cookies_file:
+        print(f"[startup] cookies exists: {'yes' if os.path.exists(cookies_file) else 'no'}")
 
 @bot.event
 async def on_command_error(ctx, error):
