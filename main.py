@@ -274,7 +274,7 @@ async def play(ctx: commands.Context, *, query):
         title = entry["title"]
         url = entry["url"]
         video_url = entry["webpage_url"]
-        source = await discord.FFmpegOpusAudio.from_probe(url, **FFMPEG_OPTS)
+        source = discord.FFmpegOpusAudio(url, **FFMPEG_OPTS)
         vc.play(source, after=after_play)
 
     def after_play(error):
