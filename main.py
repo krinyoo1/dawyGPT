@@ -287,7 +287,7 @@ async def play(ctx: commands.Context, *, query):
         if queue:
             next_title, next_url = queue.popleft()
             asyncio.run_coroutine_threadsafe(play_audio(is_url=True, query=next_url), bot.loop)
-            asyncio.run_coroutine_threadsafe(ctx.send(embed=discord.Embed(title="Now Playing.. 🎵", description=f"Now playing **{title}** in {ctx.author.voice.channel.mention}", color=discord.Color.blue())), bot.loop)
+            asyncio.run_coroutine_threadsafe(ctx.send(embed=discord.Embed(title="Now Playing.. 🎵", description=f"Now playing **{next_title}** in {ctx.author.voice.channel.mention}", color=discord.Color.blue())), bot.loop)
             return
 
         audio_queue.pop(ctx.guild.id, None)
@@ -335,7 +335,13 @@ async def queue(ctx: commands.Context):
         return await ctx.reply(embed=discord.Embed(title="Uh oh..", description="Seems like the current queue is empty!", color=discord.Color.blue()))
 
     description = "\n".join(f"**{i+1}.** {title}" for i, (title, url) in enumerate(q))
-    await ctx.reply(embed=discord.Embed(title="Current queue.. 🎵", description=description, color=discord.Color.blue()))
+
+    embed = discord.Embed(title="Current queue.. 🎵", description=description, color=discord.Color.blue())
+
+    if loop_states[ctx.guild.id]:
+        embed.set_footer("Looping is currently enabled!")
+
+    await ctx.reply(embed=embed)
 
 @bot.command() # +skip
 async def skip(ctx: commands.Context):
@@ -347,6 +353,6 @@ async def skip(ctx: commands.Context):
     loop_states.pop(ctx.guild.id, None)
     vc.stop()
 
-    await ctx.reply(embed=discord.Embed(title="Skipped! ⏭️", description="The current playing song has been skipped", color=discord.Color.blue()))
+    await ctx.reply(embed=discord.Embed(title="Skipped! ⏭️", description="The currently playing song has been skipped", color=discord.Color.blue()))
 
 bot.run(token)
