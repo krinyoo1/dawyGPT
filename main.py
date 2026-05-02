@@ -106,6 +106,9 @@ async def on_voice_state_update(member, before, after):
 
         humans = [m for m in vc.channel.members if not m.bot]
         if len(humans) == 0:
+
+            loop_states.pop(guild.id, None)
+            audio_queue.pop(guild.id, None)
             await vc.disconnect()
 
 @bot.check
