@@ -338,22 +338,20 @@ async def stop(ctx: commands.Context):
     loop_state = False
     await ctx.reply(embed=discord.Embed(title="Stopped", description=f"Music stopped in {channel.mention}", color=discord.Color.blue()))
 
+loop_states = {}  # guild_id -> bool
+
 @bot.command()
 async def loop(ctx: commands.Context):
-    global loop_state
     vc = ctx.voice_client
-    if not vc and ctx.guild:
-        vc = discord.utils.get(bot.voice_clients, guild=ctx.guild)
+    if not vc or not vc.is_playing():
+        return await ctx.reply(embed=discord.Embed(title="Uh oh..", description="No songs playing to loop!", color=discord.Color.blue()))
 
-    if not vc or not vc.is_connected():
-        await ctx.reply(embed=discord.Embed(title="Uh oh..",description="No songs playing to loop!", color=discord.Color.blue()))
-        return
+    guild_id = ctx.guild.id
+    loop_states[guild_id] = not loop_states.get(guild_id, False)
 
-    if not loop_state:
-        loop_state = True
+    if loop_states[guild_id]:
         await ctx.reply(embed=discord.Embed(title="Looping.. 🌀", description="Looping has been turned on!", color=discord.Color.blue()))
     else:
-        loop_state = False
-        await ctx.reply(embed=discord.Embed(title="Looping.. 🌀", description="Looping has been turned off!",color=discord.Color.blue()))
+        await ctx.reply(embed=discord.Embed(title="Looping.. 🌀", description="Looping has been turned off!", color=discord.Color.blue()))
 
 bot.run(token)
