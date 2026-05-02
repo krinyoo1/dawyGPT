@@ -307,7 +307,7 @@ async def play(ctx: commands.Context, *, query):
         vc.play(source, after=after_play)
 
     def after_play(error):
-        if loop_state:
+        if loop_states.get(ctx.guild.id, False):
             asyncio.run_coroutine_threadsafe(play_audio(is_url=True, query=video_url), bot.loop)
             return
 
