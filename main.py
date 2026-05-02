@@ -309,6 +309,7 @@ async def play(ctx: commands.Context, *, query):
     def after_play(error):
         if loop_state:
             asyncio.run_coroutine_threadsafe(play_audio(is_url=True, query=video_url), bot.loop)
+            return
 
         if error:
             print(f"An error has occured. [{error}]")
