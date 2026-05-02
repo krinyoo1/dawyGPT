@@ -263,10 +263,11 @@ async def play(ctx: commands.Context, *, query):
 
         if is_url:
             info = extract_with_fallback(query)
+            entry = info
         else:
             info = extract_with_fallback(f"ytsearch: {query}")
+            entry = info["entries"][0]
 
-        entry = info["entries"][0]
         title = entry["title"]
         url = entry["url"]
         video_url = entry["webpage_url"]
@@ -333,7 +334,7 @@ async def queue(ctx: commands.Context):
     if not q:
         return await ctx.reply(embed=discord.Embed(title="Uh oh..", description="Seems like the current queue is empty!", color=discord.Color.blue()))
 
-    description = "\n".join(f"{i+1}. {title}" for i, (title, url) in enumerate(q))
+    description = "\n".join(f"**{i+1}.** {title}" for i, (title, url) in enumerate(q))
     await ctx.reply(embed=discord.Embed(title="Current queue.. 🎵", description=description, color=discord.Color.blue()))
 
 @bot.command() # +skip
