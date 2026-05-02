@@ -341,7 +341,7 @@ async def queue(ctx: commands.Context):
 
     embed = discord.Embed(title="Current queue.. 🎵", description=description, color=discord.Color.blue())
 
-    if loop_states[ctx.guild.id]:
+    if loop_states.get(ctx.guild.id, False):
         embed.set_footer("Looping is currently enabled!")
 
     await ctx.reply(embed=embed)
