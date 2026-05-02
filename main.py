@@ -9,6 +9,7 @@ import base64
 from yt_dlp.utils import DownloadError
 from dotenv import load_dotenv
 from discord.ext import commands
+from collections import deque
 
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
@@ -60,10 +61,9 @@ bot = commands.Bot(
     owner_id=918389840813359124
 )
 
-loop_state = False
-queue = []
-
 skip_disconnect_once_guilds = set()
+
+audio_queue = {}
 
 @bot.event
 async def on_ready():
@@ -230,55 +230,6 @@ async def editbalance(ctx: commands.Context, target: discord.Member, type: str, 
     balance = helpers.edit_balance(user_id=str(userID), type=type, amount=int(amount))
     await ctx.reply(embed=discord.Embed(description=f"{target}'s new balance is **{balance}$** 💵", color=discord.Color.blue()))
 
-'''
-@bot.command()
-async def play(ctx: commands.Context, *, query):
-    global skip_disconnect_once_guilds
-    if not ctx.author.voice:
-        return await ctx.reply(embed=discord.Embed(title="Uh oh..",description="You need to join a voice channel first!", color=discord.Color.blue()))
-
-    vc = ctx.voice_client or await ctx.author.voice.channel.connect()
-
-    info = extract_with_fallback(f"ytsearch: {query}")
-    title = info["entries"][0]["title"]
-
-    async def play_fresh():
-        if not vc or not vc.is_connected():
-            return
-        loop_info = extract_with_fallback(f"ytsearch: {query}")
-        loop_url = loop_info["entries"][0]["url"]
-        fresh_source = discord.FFmpegPCMAudio(loop_url, **FFMPEG_OPTS)
-        vc.play(fresh_source, after=after_play)
-
-    if vc.is_playing():
-        if ctx.guild:
-            skip_disconnect_once_guilds.add(ctx.guild.id)
-        vc.stop()
-
-    def after_play(error):
-        if ctx.guild and ctx.guild.id in skip_disconnect_once_guilds:
-            skip_disconnect_once_guilds.discard(ctx.guild.id)
-            return
-
-        if error:
-            print(f"An error has occured. [{error}]")
-            return
-
-        if not loop_state:
-            fut = vc.disconnect()
-            asyncio.run_coroutine_threadsafe(fut, bot.loop)
-            return
-
-        fut = asyncio.run_coroutine_threadsafe(play_fresh(), bot.loop)
-        try:
-            fut.result()
-        except Exception as e:
-            print(f"Loop replay error: [{e}]")
-
-    await play_fresh()
-    await ctx.reply(embed=discord.Embed(title="Now Playing.. 🎵",description=f"Now playing **{title}** in {ctx.author.voice.channel.mention}", color=discord.Color.blue()))
-'''
-
 @bot.command()
 async def play(ctx: commands.Context, *, query):
     if not ctx.author.voice:
@@ -286,6 +237,19 @@ async def play(ctx: commands.Context, *, query):
             embed=discord.Embed(title="Uh oh..", description="You need to join a voice channel first!", color=discord.Color.blue()))
 
     vc = ctx.voice_client or await ctx.author.voice.channel.connect()
+
+    if vc.is_playing():
+        if ctx.guild.id not in audio_queue:
+            audio_queue[ctx.guild.id] = deque()
+
+        info = extract_with_fallback(f"ytsearch: {query}")
+        entry = info["entries"][0]
+        queued_title = entry["title"]
+        queued_url = entry["webpage_url"]
+        audio_queue[ctx.guild.id].append((queued_title, queued_url))
+
+        return await ctx.reply(
+            embed=discord.Embed(title="Added to queue 🎵", description=f"**{queued_title}** added to the queue!", color=discord.Color.blue()))
 
     video_url = ""
     title = "PLACEHOLDER"
@@ -307,18 +271,24 @@ async def play(ctx: commands.Context, *, query):
         vc.play(source, after=after_play)
 
     def after_play(error):
-        if loop_states.get(ctx.guild.id, False):
-            asyncio.run_coroutine_threadsafe(play_audio(is_url=True, query=video_url), bot.loop)
-            return
-
         if error:
             print(f"An error has occured. [{error}]")
             return
 
-        fut = vc.disconnect()
-        asyncio.run_coroutine_threadsafe(fut, bot.loop)
+        if loop_states.get(ctx.guild.id, False):
+            asyncio.run_coroutine_threadsafe(play_audio(is_url=True, query=video_url), bot.loop)
+            return
 
-    await play_audio(False, query=query)
+        queue = audio_queue.get(ctx.guild.id)
+        if queue:
+            next_title, next_url = queue.popleft()
+            asyncio.run_coroutine_threadsafe(play_audio(is_url=True, query=next_url), bot.loop)
+            return
+
+        audio_queue.pop(ctx.guild.id, None)
+        asyncio.run_coroutine_threadsafe(vc.disconnect(), bot.loop)
+
+    await play_audio(is_url=False, query=query)
     await ctx.reply(embed=discord.Embed(title="Now Playing.. 🎵", description=f"Now playing **{title}** in {ctx.author.voice.channel.mention}", color=discord.Color.blue()))
 
 @bot.command()
@@ -335,7 +305,6 @@ async def stop(ctx: commands.Context):
         vc.stop()
 
     await vc.disconnect()
-    loop_state = False
     await ctx.reply(embed=discord.Embed(title="Stopped", description=f"Music stopped in {channel.mention}", color=discord.Color.blue()))
 
 loop_states = {}  # guild_id -> bool
@@ -353,5 +322,14 @@ async def loop(ctx: commands.Context):
         await ctx.reply(embed=discord.Embed(title="Looping.. 🌀", description="Looping has been turned on!", color=discord.Color.blue()))
     else:
         await ctx.reply(embed=discord.Embed(title="Looping.. 🌀", description="Looping has been turned off!", color=discord.Color.blue()))
+
+@bot.command()
+async def queue(ctx: commands.Context):
+    q = audio_queue.get(ctx.guild.id)
+    if not q:
+        return await ctx.reply(embed=discord.Embed(title="Uh oh..", description="Seems like the current queue is empty!", color=discord.Color.blue()))
+
+    description = "\n".join(f"{i+1}. {title}" for i, (title, url) in enumerate(q))
+    await ctx.reply(embed=discord.Embed(title="Current queue.. 🎵", description=description, color=discord.Color.blue()))
 
 bot.run(token)
