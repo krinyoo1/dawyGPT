@@ -326,7 +326,7 @@ async def loop(ctx: commands.Context):
     guild_id = ctx.guild.id
     loop_states[guild_id] = not loop_states.get(guild_id, False)
 
-    if loop_states[guild_id]:
+    if loop_states.get(guild_id, False):
         await ctx.reply(embed=discord.Embed(title="Looping.. 🌀", description="Looping has been turned on!", color=discord.Color.blue()))
     else:
         await ctx.reply(embed=discord.Embed(title="Looping.. 🌀", description="Looping has been turned off!", color=discord.Color.blue()))
