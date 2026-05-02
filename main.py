@@ -6,7 +6,6 @@ import os
 import random
 import shutil
 import base64
-import socket
 from yt_dlp.utils import DownloadError
 from dotenv import load_dotenv
 from discord.ext import commands
@@ -62,6 +61,8 @@ bot = commands.Bot(
 )
 
 loop_state = False
+queue = []
+
 skip_disconnect_once_guilds = set()
 
 @bot.event
@@ -237,38 +238,8 @@ async def play(ctx: commands.Context, *, query):
 
     vc = ctx.voice_client or await ctx.author.voice.channel.connect()
 
-    try:
-        info = extract_with_fallback(f"ytsearch: {query}")
-        title = info["entries"][0]["title"]
-    except DownloadError as e:
-        err = str(e)
-        if "could not find chrome cookies database" in err.lower():
-            await ctx.reply(
-                embed=discord.Embed(
-                    title="Cookie Source Not Found",
-                    description=(
-                        "This host has no local Chrome profile to read cookies from.\n"
-                        "On container/remote hosting, set `YTDL_COOKIES_FILE` to an uploaded cookies.txt path, "
-                        "or remove `YTDL_COOKIES_FROM_BROWSER`."
-                    ),
-                    color=discord.Color.blue()
-                )
-            )
-            return
-        if "Sign in to confirm you’re not a bot" in err or "Sign in to confirm you're not a bot" in err:
-            await ctx.reply(
-                embed=discord.Embed(
-                    title="YouTube Authentication Needed",
-                    description=(
-                        "YouTube is blocking anonymous access right now.\n"
-                        "Set `YTDL_COOKIES_FROM_BROWSER` (example: `chrome`) or "
-                        "`YTDL_COOKIES_FILE` in your `.env`, then restart the bot."
-                    ),
-                    color=discord.Color.blue()
-                )
-            )
-            return
-        raise
+    info = extract_with_fallback(f"ytsearch: {query}")
+    title = info["entries"][0]["title"]
 
     async def play_fresh():
         if not vc or not vc.is_connected():
