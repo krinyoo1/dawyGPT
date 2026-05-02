@@ -274,7 +274,7 @@ async def play(ctx: commands.Context, *, query):
         title = entry["title"]
         url = entry["url"]
         video_url = entry["webpage_url"]
-        source = discord.FFmpegPCMAudio(url, **FFMPEG_OPTS)
+        source = await discord.FFmpegOpusAudio.from_probe(url, **FFMPEG_OPTS)
         vc.play(source, after=after_play)
 
     def after_play(error):
@@ -342,7 +342,7 @@ async def queue(ctx: commands.Context):
     embed = discord.Embed(title="Current queue.. 🎵", description=description, color=discord.Color.blue())
 
     if loop_states.get(ctx.guild.id, False):
-        embed.set_footer("Looping is currently enabled!")
+        embed.set_footer(text="Looping is currently enabled!")
 
     await ctx.reply(embed=embed)
 
