@@ -64,6 +64,7 @@ bot = commands.Bot(
 skip_disconnect_once_guilds = set()
 
 audio_queue = {}
+loop_states = {}
 
 @bot.event
 async def on_ready():
@@ -131,7 +132,9 @@ async def help(ctx: commands.Context):
 
     voice_commands = '''
     `+play` [song name] - you can play any songs or videos from youtube
+    `+queue` - shows you the current queue
     `+stop` - you can stop any currently playing songs in the vc
+    `+skip` - skip the currently playing song, bypasses loop
     `+loop` - if a song is playing, you can turn looping on and off with this command
     '''
 
@@ -230,7 +233,7 @@ async def editbalance(ctx: commands.Context, target: discord.Member, type: str, 
     balance = helpers.edit_balance(user_id=str(userID), type=type, amount=int(amount))
     await ctx.reply(embed=discord.Embed(description=f"{target}'s new balance is **{balance}$** 💵", color=discord.Color.blue()))
 
-@bot.command()
+@bot.command() # +play
 async def play(ctx: commands.Context, *, query):
     if not ctx.author.voice:
         return await ctx.reply(
@@ -283,6 +286,7 @@ async def play(ctx: commands.Context, *, query):
         if queue:
             next_title, next_url = queue.popleft()
             asyncio.run_coroutine_threadsafe(play_audio(is_url=True, query=next_url), bot.loop)
+            asyncio.run_coroutine_threadsafe(ctx.send(embed=discord.Embed(title="Now Playing.. 🎵", description=f"Now playing **{title}** in {ctx.author.voice.channel.mention}", color=discord.Color.blue())), bot.loop)
             return
 
         audio_queue.pop(ctx.guild.id, None)
@@ -291,7 +295,7 @@ async def play(ctx: commands.Context, *, query):
     await play_audio(is_url=False, query=query)
     await ctx.reply(embed=discord.Embed(title="Now Playing.. 🎵", description=f"Now playing **{title}** in {ctx.author.voice.channel.mention}", color=discord.Color.blue()))
 
-@bot.command()
+@bot.command() # +stop
 async def stop(ctx: commands.Context):
     vc = ctx.voice_client
 
@@ -301,15 +305,15 @@ async def stop(ctx: commands.Context):
 
     channel = vc.channel
 
+    audio_queue.pop(ctx.guild.id, None)
+    loop_states.pop(ctx.guild.id, None)
+
     if vc.is_playing() or vc.is_paused():
         vc.stop()
 
-    await vc.disconnect()
     await ctx.reply(embed=discord.Embed(title="Stopped", description=f"Music stopped in {channel.mention}", color=discord.Color.blue()))
 
-loop_states = {}  # guild_id -> bool
-
-@bot.command()
+@bot.command() # +loop
 async def loop(ctx: commands.Context):
     vc = ctx.voice_client
     if not vc or not vc.is_playing():
@@ -323,7 +327,7 @@ async def loop(ctx: commands.Context):
     else:
         await ctx.reply(embed=discord.Embed(title="Looping.. 🌀", description="Looping has been turned off!", color=discord.Color.blue()))
 
-@bot.command()
+@bot.command() # +queue
 async def queue(ctx: commands.Context):
     q = audio_queue.get(ctx.guild.id)
     if not q:
@@ -331,5 +335,17 @@ async def queue(ctx: commands.Context):
 
     description = "\n".join(f"{i+1}. {title}" for i, (title, url) in enumerate(q))
     await ctx.reply(embed=discord.Embed(title="Current queue.. 🎵", description=description, color=discord.Color.blue()))
+
+@bot.command() # +skip
+async def skip(ctx: commands.Context):
+    vc = ctx.voice_client
+    if not vc or not vc.is_playing():
+        return await ctx.reply(
+            embed=discord.Embed(title="Uh oh..", description="No songs playing to skip!", color=discord.Color.blue()))
+
+    loop_states.pop(ctx.guild.id, None)
+    vc.stop()
+
+    await ctx.reply(embed=discord.Embed(title="Skipped! ⏭️", description="The current playing song has been skipped", color=discord.Color.blue()))
 
 bot.run(token)
