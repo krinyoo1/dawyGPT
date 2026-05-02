@@ -230,6 +230,7 @@ async def editbalance(ctx: commands.Context, target: discord.Member, type: str, 
     balance = helpers.edit_balance(user_id=str(userID), type=type, amount=int(amount))
     await ctx.reply(embed=discord.Embed(description=f"{target}'s new balance is **{balance}$** 💵", color=discord.Color.blue()))
 
+'''
 @bot.command()
 async def play(ctx: commands.Context, *, query):
     global skip_disconnect_once_guilds
@@ -276,6 +277,48 @@ async def play(ctx: commands.Context, *, query):
 
     await play_fresh()
     await ctx.reply(embed=discord.Embed(title="Now Playing.. 🎵",description=f"Now playing **{title}** in {ctx.author.voice.channel.mention}", color=discord.Color.blue()))
+'''
+
+@bot.command()
+async def play(ctx: commands.Context, *, query):
+    if not ctx.author.voice:
+        return await ctx.reply(
+            embed=discord.Embed(title="Uh oh..", description="You need to join a voice channel first!", color=discord.Color.blue()))
+
+    vc = ctx.voice_client or await ctx.author.voice.channel.connect()
+
+    video_url = ""
+    title = "PLACEHOLDER"
+
+    async def play_audio(is_url, query):
+        nonlocal video_url
+        nonlocal title
+
+        if is_url:
+            info = extract_with_fallback(query)
+        else:
+            info = extract_with_fallback(f"ytsearch: {query}")
+
+        entry = info["entries"][0]
+        title = entry["title"]
+        url = entry["url"]
+        video_url = entry["webpage_url"]
+        source = discord.FFmpegPCMAudio(url, **FFMPEG_OPTS)
+        vc.play(source, after=after_play)
+
+    def after_play(error):
+        if loop_state:
+            asyncio.run_coroutine_threadsafe(play_audio(is_url=True, query=video_url), bot.loop)
+
+        if error:
+            print(f"An error has occured. [{error}]")
+            return
+
+        fut = vc.disconnect()
+        asyncio.run_coroutine_threadsafe(fut, bot.loop)
+
+    await play_audio(False, query=query)
+    await ctx.reply(embed=discord.Embed(title="Now Playing.. 🎵", description=f"Now playing **{title}** in {ctx.author.voice.channel.mention}", color=discord.Color.blue()))
 
 @bot.command()
 async def stop(ctx: commands.Context):
