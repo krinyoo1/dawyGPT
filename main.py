@@ -18,8 +18,19 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-YTDL_OPTS = {"format": "bestaudio/best", "noplaylist": True, "quiet": True, "default_search": "ytsearch"}
-FFMPEG_OPTS = {"before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5", "options": "-vn",}
+YTDL_OPTS = {
+    "format": "bestaudio[ext=webm]/bestaudio/best",
+    "noplaylist": True,
+    "quiet": True,
+    "default_search": "ytsearch",
+    "extractor_args": {"youtube": {"skip": ["dash", "hls"]}},
+    "age_limit": 99,
+    "skip_download": True,
+}
+FFMPEG_OPTS = {
+    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+    "options": "-vn",
+}
 YTDL_OPTS["js_runtimes"] = {"node": {}}
 
 cookies_from_browser = os.getenv("YTDL_COOKIES_FROM_BROWSER")
