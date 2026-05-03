@@ -286,10 +286,8 @@ async def play(ctx: commands.Context, *, query):
             if not info or not info.get("entries"):
                 await msg.edit(embed=discord.Embed(title="Uh oh..", description=f"No results found for **{query}**!", color=discord.Color.blue()))
                 return
+            
             entry = info["entries"][0]
-
-        if not info or not info.get("entries"):
-            return await msg.edit(embed=discord.Embed(title="Uh oh..", description=f"No results found for **{query}**!", color=discord.Color.blue()))
 
         title = entry["title"]
         url = entry["url"]
