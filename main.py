@@ -33,9 +33,11 @@ FFMPEG_OPTS = {
 }
 YTDL_OPTS["js_runtimes"] = {"node": {}}
 
+cookies_from_browser = os.getenv("YTDL_COOKIES_FROM_BROWSER")
+cookies_file = os.getenv("YTDL_COOKIES_FILE")
 cookies_b64 = os.getenv("YTDL_COOKIES_B64")
 
-if cookies_b64:
+if cookies_b64 and not cookies_file:
     decoded_path = "/tmp/cookies.txt"
     try:
         with open(decoded_path, "wb") as f:
@@ -43,6 +45,11 @@ if cookies_b64:
         cookies_file = decoded_path
     except Exception:
         pass
+
+if cookies_from_browser:
+    YTDL_OPTS["cookiesfrombrowser"] = (cookies_from_browser,)
+if cookies_file:
+    YTDL_OPTS["cookiefile"] = cookies_file
 
 def extract_with_fallback(search_query: str):
     opts_primary = dict(YTDL_OPTS)
