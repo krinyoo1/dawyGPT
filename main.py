@@ -18,19 +18,8 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-YTDL_OPTS = {
-    "format": "bestaudio[ext=webm]/bestaudio/best",
-    "noplaylist": True,
-    "quiet": True,
-    "default_search": "ytsearch",
-    "extractor_args": {"youtube": {"skip": ["dash", "hls"]}},
-    "age_limit": 99,
-    "skip_download": True,
-}
-FFMPEG_OPTS = {
-    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-    "options": "-vn",
-}
+YTDL_OPTS = {"format": "bestaudio/best", "noplaylist": True, "quiet": True, "default_search": "ytsearch"}
+FFMPEG_OPTS = {"before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5", "options": "-vn",}
 YTDL_OPTS["js_runtimes"] = {"node": {}}
 
 cookies_from_browser = os.getenv("YTDL_COOKIES_FROM_BROWSER")
@@ -256,15 +245,20 @@ async def play(ctx: commands.Context, *, query):
     vc = ctx.voice_client or await ctx.author.voice.channel.connect()
 
     if vc.is_playing():
-        msg = await ctx.reply(embed=discord.Embed(title="Searching.. 🔎", description=f"Searching for **{query}**...", color=discord.Color.blue()))
-        info = await asyncio.get_event_loop().run_in_executor(None, extract_with_fallback, f"ytsearch: {query}")
+        if ctx.guild.id not in audio_queue:
+            audio_queue[ctx.guild.id] = deque()
+
+        info = extract_with_fallback(f"ytsearch: {query}")
         if not info or not info.get("entries"):
-            return await msg.edit(embed=discord.Embed(title="Uh oh..", description="No results found!", color=discord.Color.blue()))
+            raise commands.CommandError(f"No results found for {str(query)}")
+
         entry = info["entries"][0]
         queued_title = entry["title"]
         queued_url = entry["webpage_url"]
-        audio_queue.setdefault(ctx.guild.id, deque()).append((queued_title, queued_url))
-        return await msg.edit(embed=discord.Embed(title="Added to queue 🎵", description=f"**{queued_title}** added to the queue!", color=discord.Color.blue()))
+        audio_queue[ctx.guild.id].append((queued_title, queued_url))
+
+        return await ctx.reply(
+            embed=discord.Embed(title="Added to queue 🎵", description=f"**{queued_title}** added to the queue!", color=discord.Color.blue()))
 
     video_url = ""
     title = "PLACEHOLDER"
@@ -274,14 +268,14 @@ async def play(ctx: commands.Context, *, query):
         nonlocal title
 
         if is_url:
-            info = await asyncio.get_event_loop().run_in_executor(None, extract_with_fallback, query)
+            info = extract_with_fallback(query)
             entry = info
         else:
-            info = await asyncio.get_event_loop().run_in_executor(None, extract_with_fallback, f"ytsearch: {query}")
-            if not info or not info.get("entries"):
-                await ctx.send(embed=discord.Embed(title="Uh oh..", description="No results found!", color=discord.Color.blue()))
-                return
+            info = extract_with_fallback(f"ytsearch: {query}")
             entry = info["entries"][0]
+
+        if not info or not info.get("entries"):
+            raise commands.CommandError(f"No results found for {str(query)}")
 
         title = entry["title"]
         url = entry["url"]
@@ -308,9 +302,8 @@ async def play(ctx: commands.Context, *, query):
         audio_queue.pop(ctx.guild.id, None)
         asyncio.run_coroutine_threadsafe(vc.disconnect(), bot.loop)
 
-    msg = await ctx.reply(embed=discord.Embed(title="Searching.. 🔎", description=f"Searching for **{query}**...", color=discord.Color.blue()))
     await play_audio(is_url=False, query=query)
-    await msg.edit(embed=discord.Embed(title="Now Playing.. 🎵", description=f"Now playing **{title}** in {ctx.author.voice.channel.mention}", color=discord.Color.blue()))
+    await ctx.reply(embed=discord.Embed(title="Now Playing.. 🎵", description=f"Now playing **{title}** in {ctx.author.voice.channel.mention}", color=discord.Color.blue()))
 
 @bot.command() # +stop
 async def stop(ctx: commands.Context):
