@@ -250,16 +250,17 @@ async def editbalance(ctx: commands.Context, target: discord.Member, type: str, 
 @bot.command() # +play
 async def play(ctx: commands.Context, *, query):
     if not ctx.author.voice:
-        return await ctx.reply(
-            embed=discord.Embed(title="Uh oh..", description="You need to join a voice channel first!", color=discord.Color.blue()))
+        return await ctx.reply(embed=discord.Embed(title="Uh oh..", description="You need to join a voice channel first!", color=discord.Color.blue()))
 
     vc = ctx.voice_client or await ctx.author.voice.channel.connect()
+
+    msg = await ctx.reply(embed=discord.Embed(title="Searching.. 🔎", description=f"Searching for song: **{query}**", color=discord.Color.blue()))
 
     if vc.is_playing():
         if ctx.guild.id not in audio_queue:
             audio_queue[ctx.guild.id] = deque()
 
-        info = extract_with_fallback(f"ytsearch: {query}")
+        info = await asyncio.get_event_loop().run_in_executor(None, extract_with_fallback, f"ytsearch: {query}")
         if not info or not info.get("entries"):
             raise commands.CommandError(f"No results found for {str(query)}")
 
@@ -268,8 +269,7 @@ async def play(ctx: commands.Context, *, query):
         queued_url = entry["webpage_url"]
         audio_queue[ctx.guild.id].append((queued_title, queued_url))
 
-        return await ctx.reply(
-            embed=discord.Embed(title="Added to queue 🎵", description=f"**{queued_title}** added to the queue!", color=discord.Color.blue()))
+        return await msg.edit(embed=discord.Embed(title="Added to queue 🎵", description=f"**{queued_title}** added to the queue!", color=discord.Color.blue()))
 
     video_url = ""
     title = "PLACEHOLDER"
@@ -279,14 +279,17 @@ async def play(ctx: commands.Context, *, query):
         nonlocal title
 
         if is_url:
-            info = extract_with_fallback(query)
+            info = await asyncio.get_event_loop().run_in_executor(None, extract_with_fallback, query)
             entry = info
         else:
-            info = extract_with_fallback(f"ytsearch: {query}")
+            info = await asyncio.get_event_loop().run_in_executor(None, extract_with_fallback, f"ytsearch: {query}")
+            if not info or not info.get("entries"):
+                await msg.edit(embed=discord.Embed(title="Uh oh..", description=f"No results found for **{query}**!", color=discord.Color.blue()))
+                return
             entry = info["entries"][0]
 
         if not info or not info.get("entries"):
-            raise commands.CommandError(f"No results found for {str(query)}")
+            return await msg.edit(embed=discord.Embed(title="Uh oh..", description=f"No results found for **{query}**!", color=discord.Color.blue()))
 
         title = entry["title"]
         url = entry["url"]
@@ -314,7 +317,7 @@ async def play(ctx: commands.Context, *, query):
         asyncio.run_coroutine_threadsafe(vc.disconnect(), bot.loop)
 
     await play_audio(is_url=False, query=query)
-    await ctx.reply(embed=discord.Embed(title="Now Playing.. 🎵", description=f"Now playing **{title}** in {ctx.author.voice.channel.mention}", color=discord.Color.blue()))
+    await msg.edit(embed=discord.Embed(title="Now Playing.. 🎵", description=f"Now playing **{title}** in {ctx.author.voice.channel.mention}", color=discord.Color.blue()))
 
 @bot.command() # +stop
 async def stop(ctx: commands.Context):
