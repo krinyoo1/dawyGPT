@@ -18,15 +18,24 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-YTDL_OPTS = {"format": "bestaudio/best", "noplaylist": True, "quiet": True, "default_search": "ytsearch"}
-FFMPEG_OPTS = {"before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5", "options": "-vn",}
+YTDL_OPTS = {
+    "format": "bestaudio[ext=webm]/bestaudio/best",
+    "noplaylist": True,
+    "quiet": True,
+    "default_search": "ytsearch",
+    "extractor_args": {"youtube": {"skip": ["dash", "hls"]}},
+    "age_limit": 99,
+    "skip_download": True,
+}
+FFMPEG_OPTS = {
+    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+    "options": "-vn",
+}
 YTDL_OPTS["js_runtimes"] = {"node": {}}
 
-cookies_from_browser = os.getenv("YTDL_COOKIES_FROM_BROWSER")
-cookies_file = os.getenv("YTDL_COOKIES_FILE")
 cookies_b64 = os.getenv("YTDL_COOKIES_B64")
 
-if cookies_b64 and not cookies_file:
+if cookies_b64:
     decoded_path = "/tmp/cookies.txt"
     try:
         with open(decoded_path, "wb") as f:
@@ -34,11 +43,6 @@ if cookies_b64 and not cookies_file:
         cookies_file = decoded_path
     except Exception:
         pass
-
-if cookies_from_browser:
-    YTDL_OPTS["cookiesfrombrowser"] = (cookies_from_browser,)
-if cookies_file:
-    YTDL_OPTS["cookiefile"] = cookies_file
 
 def extract_with_fallback(search_query: str):
     opts_primary = dict(YTDL_OPTS)
@@ -245,17 +249,15 @@ async def play(ctx: commands.Context, *, query):
     vc = ctx.voice_client or await ctx.author.voice.channel.connect()
 
     if vc.is_playing():
-        if ctx.guild.id not in audio_queue:
-            audio_queue[ctx.guild.id] = deque()
-
-        info = extract_with_fallback(f"ytsearch: {query}")
+        msg = await ctx.reply(embed=discord.Embed(title="Searching.. 🔎", description=f"Searching for **{query}**...", color=discord.Color.blue()))
+        info = await asyncio.get_event_loop().run_in_executor(None, extract_with_fallback, f"ytsearch: {query}")
+        if not info or not info.get("entries"):
+            return await msg.edit(embed=discord.Embed(title="Uh oh..", description="No results found!", color=discord.Color.blue()))
         entry = info["entries"][0]
         queued_title = entry["title"]
         queued_url = entry["webpage_url"]
-        audio_queue[ctx.guild.id].append((queued_title, queued_url))
-
-        return await ctx.reply(
-            embed=discord.Embed(title="Added to queue 🎵", description=f"**{queued_title}** added to the queue!", color=discord.Color.blue()))
+        audio_queue.setdefault(ctx.guild.id, deque()).append((queued_title, queued_url))
+        return await msg.edit(embed=discord.Embed(title="Added to queue 🎵", description=f"**{queued_title}** added to the queue!", color=discord.Color.blue()))
 
     video_url = ""
     title = "PLACEHOLDER"
@@ -265,10 +267,13 @@ async def play(ctx: commands.Context, *, query):
         nonlocal title
 
         if is_url:
-            info = extract_with_fallback(query)
+            info = await asyncio.get_event_loop().run_in_executor(None, extract_with_fallback, query)
             entry = info
         else:
-            info = extract_with_fallback(f"ytsearch: {query}")
+            info = await asyncio.get_event_loop().run_in_executor(None, extract_with_fallback, f"ytsearch: {query}")
+            if not info or not info.get("entries"):
+                await ctx.send(embed=discord.Embed(title="Uh oh..", description="No results found!", color=discord.Color.blue()))
+                return
             entry = info["entries"][0]
 
         title = entry["title"]
@@ -296,8 +301,9 @@ async def play(ctx: commands.Context, *, query):
         audio_queue.pop(ctx.guild.id, None)
         asyncio.run_coroutine_threadsafe(vc.disconnect(), bot.loop)
 
+    msg = await ctx.reply(embed=discord.Embed(title="Searching.. 🔎", description=f"Searching for **{query}**...", color=discord.Color.blue()))
     await play_audio(is_url=False, query=query)
-    await ctx.reply(embed=discord.Embed(title="Now Playing.. 🎵", description=f"Now playing **{title}** in {ctx.author.voice.channel.mention}", color=discord.Color.blue()))
+    await msg.edit(embed=discord.Embed(title="Now Playing.. 🎵", description=f"Now playing **{title}** in {ctx.author.voice.channel.mention}", color=discord.Color.blue()))
 
 @bot.command() # +stop
 async def stop(ctx: commands.Context):
