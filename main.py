@@ -91,9 +91,9 @@ async def on_command_error(ctx, error):
         return
     if isinstance(error, (commands.CommandOnCooldown)):
         await ctx.message.delete()
-        await ctx.author.send(embed=discord.Embed(title="Too fast!", description="Slow down buckaroo! Getting rate limited is NOT my thing.", color=discord.Color.blue()))
+        await ctx.author.send(embed=discord.Embed(title="Too fast!", description="Slow down buckaroo! Getting rate limited is NOT my thing.", color=discord.Color.orange()))
         return
-    await ctx.reply(embed=discord.Embed(title="Uh oh..", description=f"An error has occured. [{error}]", color=discord.Color.blue()))
+    await ctx.reply(embed=discord.Embed(title="Uh oh..", description=f"An error has occured. [{error}]", color=discord.Color.red()))
 
 ''' CURRENTLY NOT USING BOT CHECKS
 @bot.check
@@ -167,21 +167,21 @@ async def say(ctx: commands.Context, *, msg):
 @bot.command() # +dice
 async def dice(ctx: commands.Context):
     count = 3
-    msg = await ctx.reply(embed=discord.Embed(description=f"Rolling the dice in **{count}** ", color=discord.Color.blue()))
+    msg = await ctx.reply(embed=discord.Embed(description=f"Rolling the dice in **{count}** ", color=discord.Color.orange()))
     for i in range(0, 3):
         await asyncio.sleep(1)
         count -= 1
-        await msg.edit(embed=discord.Embed(description=f"Rolling the dice in **{count}**", color=discord.Color.blue()))
+        await msg.edit(embed=discord.Embed(description=f"Rolling the dice in **{count}**", color=discord.Color.orange()))
 
     await asyncio.sleep(1)
-    await msg.edit(embed=discord.Embed(description=f"You have rolled a **{random.randint(1, 6)}** 🎲", color=discord.Color.blue()))
+    await msg.edit(embed=discord.Embed(description=f"You have rolled a **{random.randint(1, 6)}** 🎲", color=discord.Color.green()))
 
 @bot.command() # +beg
 async def beg(ctx: commands.Context):
     is_cooldown = helpers.beg_cooldown(str(ctx.author.id), "read")
 
     if is_cooldown:
-        await ctx.reply(embed=discord.Embed(title="Uh oh..", description=f"You are on cooldown! You may only beg every **3 minutes**! ⏱️", color=discord.Color.blue()))
+        await ctx.reply(embed=discord.Embed(title="Uh oh..", description=f"You are on cooldown! You may only beg every **3 minutes**! ⏱️", color=discord.Color.yellow()))
         return
 
     begged_money = random.randint(60, 900)
@@ -189,7 +189,7 @@ async def beg(ctx: commands.Context):
     helpers.edit_balance(user_id=str(ctx.author.id), type="add", amount=begged_money)
     helpers.beg_cooldown(user_id=str(ctx.author.id), type="write")
 
-    await ctx.reply(embed=discord.Embed(title="Begged on the streets!", description=f"You successfully begged on the streets graciously! You managed to gather **{begged_money}$**", color=discord.Color.blue()))
+    await ctx.reply(embed=discord.Embed(title="Begged on the streets!", description=f"You begged on the streets gracefully! You managed to gather **{begged_money}$**", color=discord.Color.green()))
 
 @bot.command() # +slots
 async def slots(ctx: commands.Context, amount: str):
@@ -200,18 +200,18 @@ async def slots(ctx: commands.Context, amount: str):
 
     balance = helpers.edit_balance(user_id=str(ctx.author.id), type="read", amount=0)
     if balance < amount:
-        await ctx.reply(embed=discord.Embed(title="Uh oh..",description=f"You do not have enough money! Your amount is **{amount}$**, but your balance is **{balance}**$!", color=discord.Color.blue()))
+        await ctx.reply(embed=discord.Embed(title="Uh oh..",description=f"You do not have enough money! Your amount is **{amount}$**, but your balance is **{balance}**$!", color=discord.Color.yellow()))
         return
 
     if REQUIRED_AMOUNT > amount:
-        await ctx.reply(embed=discord.Embed(title="Uh oh..", description=f"The amount you put in is below the required amount! The required amount is **{REQUIRED_AMOUNT}$**, your amount is **{amount}$**!", color=discord.Color.blue()))
+        await ctx.reply(embed=discord.Embed(title="Uh oh..", description=f"The amount you put in is below the required amount! The required amount is **{REQUIRED_AMOUNT}$**, your amount is **{amount}$**!", color=discord.Color.yellow()))
         return
 
     randColor1 = "⚪"
     randColor2 = "⚪"
     randColor3 = "⚪"
 
-    msg = await ctx.reply(embed=discord.Embed(title="Pulling the slot machine's lever...", description=f"{randColor1, randColor2, randColor3}", color=discord.Color.blue()))
+    msg = await ctx.reply(embed=discord.Embed(title="Pulling the slot machine's lever...", description=f"{randColor1, randColor2, randColor3}", color=discord.Color.orange()))
     await asyncio.sleep(1)
 
     color_dict = {
@@ -230,35 +230,35 @@ async def slots(ctx: commands.Context, amount: str):
     await asyncio.sleep(1)
     if randColor1 == randColor2 and randColor1 == randColor3:
         helpers.edit_balance(user_id=str(ctx.author.id), type="add", amount=amount * WINNING_MULTIPLIER)
-        await msg.edit(embed=discord.Embed(title="You win!",description=f"{randColor1, randColor2, randColor3}",color=discord.Color.blue()))
+        await msg.edit(embed=discord.Embed(title="You win!",description=f"{randColor1, randColor2, randColor3}",color=discord.Color.green()))
     else:
         helpers.edit_balance(user_id=str(ctx.author.id), type="remove", amount=amount)
-        await msg.edit(embed=discord.Embed(title="You lost.", description=f"{randColor1, randColor2, randColor3}", color=discord.Color.blue()))
+        await msg.edit(embed=discord.Embed(title="You lost.", description=f"{randColor1, randColor2, randColor3}", color=discord.Color.red()))
 
 @bot.command() # +balance
 async def balance(ctx: commands.Context):
     balance = helpers.edit_balance(user_id=str(ctx.author.id), type="read", amount=0)
-    await ctx.reply(embed=discord.Embed(description=f"Your balance is **{balance}$** 💵", color=discord.Color.blue()))
+    await ctx.reply(embed=discord.Embed(title="Success!", description=f"Your balance is **{balance}$** 💵", color=discord.Color.green()))
 
 @bot.command() # +editbalance
 @commands.is_owner() # // OWNER ONLY
 async def editbalance(ctx: commands.Context, target: discord.Member, type: str, amount: str):
     userID = target.id
     balance = helpers.edit_balance(user_id=str(userID), type=type, amount=int(amount))
-    await ctx.reply(embed=discord.Embed(description=f"{target}'s new balance is **{balance}$** 💵", color=discord.Color.blue()))
+    await ctx.reply(embed=discord.Embed(title="Success!", description=f"{target}'s new balance is **{balance}$** 💵", color=discord.Color.green()))
 
 @bot.command() # +play
 async def play(ctx: commands.Context, *, query):
     if not ctx.author.voice:
-        return await ctx.reply(embed=discord.Embed(title="Uh oh..", description="You need to join a voice channel first!", color=discord.Color.blue()))
+        return await ctx.reply(embed=discord.Embed(title="Uh oh..", description="You need to join a voice channel first!", color=discord.Color.yellow()))
 
     vc = ctx.voice_client or await ctx.author.voice.channel.connect()
 
-    msg = await ctx.reply(embed=discord.Embed(title="Searching.. 🔎", description=f"Searching for song: **{query}**", color=discord.Color.blue()))
+    msg = await ctx.reply(embed=discord.Embed(title="Searching.. 🔎", description=f"Searching for song: **{query}**", color=discord.Color.orange()))
 
     info = await asyncio.get_event_loop().run_in_executor(None, extract_with_fallback, f"ytsearch: {query}")
     if not info or not info.get("entries"):
-        return await msg.edit(embed=discord.Embed(title="Uh oh..", description=f"No results found for **{query}**!", color=discord.Color.blue()))
+        return await msg.edit(embed=discord.Embed(title="Uh oh..", description=f"No results found for **{query}**!", color=discord.Color.yellow()))
 
     entry = info["entries"][0]
     queued_title = entry["title"]
@@ -267,7 +267,7 @@ async def play(ctx: commands.Context, *, query):
     if vc.is_playing():
         audio_queue.setdefault(ctx.guild.id, deque()).append((queued_title, queued_url))
         return await msg.edit(
-            embed=discord.Embed(title="Added to queue 🎵", description=f"**{queued_title}** added to the queue!", color=discord.Color.blue()))
+            embed=discord.Embed(title="Added to queue 🎵", description=f"**{queued_title}** added to the queue!", color=discord.Color.green()))
 
     video_url = ""
     title = "PLACEHOLDER"
@@ -320,7 +320,7 @@ async def stop(ctx: commands.Context):
     vc = ctx.voice_client
 
     if not vc:
-        await ctx.reply(embed=discord.Embed(title="Uh oh..",description="I am not playing any songs!", color=discord.Color.blue()))
+        await ctx.reply(embed=discord.Embed(title="Uh oh..",description="I am not playing any songs!", color=discord.Color.yellow()))
         return
 
     channel = vc.channel
@@ -331,27 +331,27 @@ async def stop(ctx: commands.Context):
     if vc.is_playing() or vc.is_paused():
         vc.stop()
 
-    await ctx.reply(embed=discord.Embed(title="Stopped", description=f"Music stopped in {channel.mention}", color=discord.Color.blue()))
+    await ctx.reply(embed=discord.Embed(title="Stopped", description=f"Music stopped in {channel.mention}", color=discord.Color.green()))
 
 @bot.command() # +loop
 async def loop(ctx: commands.Context):
     vc = ctx.voice_client
     if not vc or not vc.is_playing():
-        return await ctx.reply(embed=discord.Embed(title="Uh oh..", description="No songs playing to loop!", color=discord.Color.blue()))
+        return await ctx.reply(embed=discord.Embed(title="Uh oh..", description="No songs playing to loop!", color=discord.Color.yellow()))
 
     guild_id = ctx.guild.id
     loop_states[guild_id] = not loop_states.get(guild_id, False)
 
     if loop_states.get(guild_id, False):
-        await ctx.reply(embed=discord.Embed(title="Looping.. 🌀", description="Looping has been turned on!", color=discord.Color.blue()))
+        await ctx.reply(embed=discord.Embed(title="Looping.. 🌀", description="Looping has been turned on!", color=discord.Color.green()))
     else:
-        await ctx.reply(embed=discord.Embed(title="Looping.. 🌀", description="Looping has been turned off!", color=discord.Color.blue()))
+        await ctx.reply(embed=discord.Embed(title="Looping.. 🌀", description="Looping has been turned off!", color=discord.Color.green()))
 
 @bot.command() # +queue
 async def queue(ctx: commands.Context):
     q = audio_queue.get(ctx.guild.id)
     if not q:
-        return await ctx.reply(embed=discord.Embed(title="Uh oh..", description="Seems like the current queue is empty!", color=discord.Color.blue()))
+        return await ctx.reply(embed=discord.Embed(title="Uh oh..", description="Seems like the current queue is empty!", color=discord.Color.yellow()))
 
     description = "\n".join(f"**{i+1}.** {title}" for i, (title, url) in enumerate(q))
 
@@ -367,11 +367,11 @@ async def skip(ctx: commands.Context):
     vc = ctx.voice_client
     if not vc or not vc.is_playing():
         return await ctx.reply(
-            embed=discord.Embed(title="Uh oh..", description="No songs playing to skip!", color=discord.Color.blue()))
+            embed=discord.Embed(title="Uh oh..", description="No songs playing to skip!", color=discord.Color.yellow()))
 
     loop_states.pop(ctx.guild.id, None)
     vc.stop()
 
-    await ctx.reply(embed=discord.Embed(title="Skipped! ⏭️", description="The currently playing song has been skipped", color=discord.Color.blue()))
+    await ctx.reply(embed=discord.Embed(title="Skipped! ⏭️", description="The currently playing song has been skipped", color=discord.Color.green()))
 
 bot.run(token)
