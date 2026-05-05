@@ -238,7 +238,7 @@ async def slots(ctx: commands.Context, amount: str):
 @bot.command() # +balance
 async def balance(ctx: commands.Context):
     balance = helpers.edit_balance(user_id=str(ctx.author.id), type="read", amount=0)
-    await ctx.reply(embed=discord.Embed(title="Success!", description=f"Your balance is **{balance}$** 💵", color=discord.Color.green()))
+    await ctx.reply(embed=discord.Embed(description=f"Your balance is **{balance}$** 💵", color=discord.Color.green()))
 
 @bot.command() # +editbalance
 @commands.is_owner() # // OWNER ONLY
